@@ -163,6 +163,8 @@ class MainWindow(QMainWindow):
         self.view_developer.item_selected.connect(self._on_dev_tool_inspected)
         self.view_developer.refresh_requested.connect(self.scan_developer_tools)
         self.view_developer.clean_broken_package_requested.connect(self._clean_broken_package)
+        self.view_developer.scan_projects_requested.connect(self.scan_workspace_projects)
+        self.view_developer.clean_artifacts_requested.connect(self.clean_workspace_artifacts)
         self.stack.addWidget(self.view_developer)  # 3
 
         self.view_applications = ApplicationsView()
@@ -253,6 +255,7 @@ class MainWindow(QMainWindow):
         drv = DriveService.get_drive(letter)
         if drv:
             self.view_dashboard.update_drive_hero(drv)
+            self.view_developer.txt_project_dir.setText(f"{letter}\\")
             self.cmd_panel.log(f"Active drive switched to {letter} ({drv.name})")
 
     # --- Scanning Pipelines ---
@@ -340,6 +343,66 @@ class MainWindow(QMainWindow):
         self.latest_dev_tools = tools
         self.view_developer.populate_tools(tools)
         self.cmd_panel.log(f"Developer environments scanned. Discovered {len(tools)} environments & tools.")
+
+    def scan_workspace_projects(self, dir_path: str) -> None:
+        self.cmd_panel.set_busy(True, f"Scanning project artifacts (node_modules, builds) in {dir_path}...")
+        self.cmd_panel.log(f"Searching for project workspaces in {dir_path}...")
+
+        def _task(is_cancelled, progress_signal):
+            from services.project_service import ProjectScannerService
+
+            return ProjectScannerService.scan_workspace_artifacts(
+                Path(dir_path),
+                max_depth=5,
+                is_cancelled=is_cancelled,
+                progress_callback=lambda msg: progress_signal.log.emit(msg),
+            )
+
+        worker = GenericWorker(_task)
+        worker.signals.log.connect(self.cmd_panel.log)
+        worker.signals.finished.connect(self._on_projects_scan_finished)
+        worker.signals.error.connect(self._on_worker_error)
+        self.thread_pool.start(worker)
+
+    def _on_projects_scan_finished(self, artifacts) -> None:
+        self.cmd_panel.set_busy(False, f"Project scan completed ({len(artifacts)} artifacts)")
+        total_b = sum(a.size for a in artifacts)
+        self.cmd_panel.log(f"Discovered {len(artifacts)} project artifacts ({format_bytes(total_b)} total).")
+        self.view_developer.populate_project_artifacts(artifacts)
+
+    def clean_workspace_artifacts(self, artifacts) -> None:
+        self.cmd_panel.set_busy(True, f"Cleaning {len(artifacts)} project artifacts...")
+        self.cmd_panel.log(f"Sending {len(artifacts)} project artifacts to Windows Recycle Bin...")
+
+        def _task(is_cancelled, progress_signal):
+            from services.project_service import ProjectScannerService
+
+            cleaned_count = 0
+            cleaned_bytes = 0
+            for art in artifacts:
+                if is_cancelled and is_cancelled():
+                    break
+                progress_signal.log.emit(
+                    f"Cleaning {art.project_name}/{art.artifact_name} ({format_bytes(art.size)})..."
+                )
+                if ProjectScannerService.clean_artifact(art, use_recycle_bin=True):
+                    cleaned_count += 1
+                    cleaned_bytes += art.size
+            return cleaned_count, cleaned_bytes
+
+        def _on_done(res):
+            cnt, sz = res
+            self.cmd_panel.set_busy(False, "Project cleanup complete")
+            self.cmd_panel.log(f"Successfully cleaned {cnt} artifacts ({format_bytes(sz)} reclaimed) to Recycle Bin.")
+            curr_dir = self.view_developer.txt_project_dir.text().strip()
+            if curr_dir:
+                self.scan_workspace_projects(curr_dir)
+
+        worker = GenericWorker(_task)
+        worker.signals.log.connect(self.cmd_panel.log)
+        worker.signals.finished.connect(_on_done)
+        worker.signals.error.connect(self._on_worker_error)
+        self.thread_pool.start(worker)
 
     def scan_applications(self) -> None:
         def _task(is_cancelled, progress_signal):

@@ -48,6 +48,17 @@ def run_cli(args_list=None):
     p_prot.add_argument("action", choices=["list", "add", "remove"], help="Protection action")
     p_prot.add_argument("path", nargs="?", default=None, help="Path to protect or unprotect")
 
+    # projects (node_modules & build artifacts)
+    p_proj = subparsers.add_parser("projects", help="Scan project workspaces for node_modules and build outputs")
+    p_proj.add_argument("path", nargs="?", default=".", help="Drive or directory to scan (e.g. D:\\ or .)")
+    p_proj.add_argument("--clean", action="store_true", help="Send discovered artifacts to Recycle Bin")
+    p_proj.add_argument(
+        "--tech",
+        default="all",
+        choices=["all", "node", "python", "flutter", "rust", "dotnet"],
+        help="Filter by technology",
+    )
+
     # report
     p_rep = subparsers.add_parser("report", help="Export system storage audit report")
     p_rep.add_argument("--output", "-o", default="pcclean_report.html", help="Output report file path")
@@ -165,6 +176,36 @@ def run_cli(args_list=None):
                 return 1
             protection_svc.unprotect_path(args.path)
             print(f"Protected path removed: {args.path}")
+        return 0
+
+    elif args.subcommand == "projects":
+        from services.project_service import ProjectScannerService
+
+        target_dir = Path(args.path)
+        print(f"\nScanning workspace projects in {target_dir.resolve()}...")
+        artifacts = ProjectScannerService.scan_workspace_artifacts(target_dir)
+
+        if args.tech != "all":
+            tech_map = {"node": "Node.js", "python": "Python", "flutter": "Flutter", "rust": "Rust", "dotnet": ".NET"}
+            wanted = tech_map.get(args.tech, "")
+            artifacts = [a for a in artifacts if wanted.lower() in a.tech.lower()]
+
+        total_b = sum(a.size for a in artifacts)
+        print(f"\nDiscovered {len(artifacts)} project artifacts ({format_bytes(total_b)} total):")
+        print(f"  {'Project':<20} | {'Tech':<10} | {'Folder':<14} | {'Size':<10} | {'Path'}")
+        print("  " + "-" * 80)
+        for a in artifacts:
+            print(
+                f"  {a.project_name:<20} | {a.tech:<10} | {a.artifact_name:<14} | {format_bytes(a.size):<10} | {a.path}"
+            )
+
+        if args.clean and artifacts:
+            print(f"\nCleaning {len(artifacts)} artifacts to Windows Recycle Bin...")
+            for a in artifacts:
+                success = ProjectScannerService.clean_artifact(a, use_recycle_bin=True)
+                res_str = "RECYCLED" if success else "FAILED"
+                print(f"  [{res_str}] {a.project_name} -> {a.artifact_name}")
+            print("Project cleanup completed.")
         return 0
 
     elif args.subcommand == "report":

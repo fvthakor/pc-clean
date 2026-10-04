@@ -6,6 +6,7 @@ from pathlib import Path
 from app.paths import (
     get_program_files,
     get_program_files_x86,
+    get_system_temp_dir,
     get_user_desktop,
     get_user_documents,
     get_user_downloads,
@@ -44,7 +45,15 @@ class ProtectionService:
     def is_protected(self, path: Path) -> bool:
         """Check if path is protected either in repository or matches critical user patterns."""
         try:
-            resolved_str = str(path.resolve()).lower()
+            resolved = path.resolve()
+            resolved_str = str(resolved).lower().rstrip("\\/")
+
+            # Explicit exemption: System temporary directory (C:\Windows\Temp)
+            # is designed for cleaning and should not be blocked by blanket C:\Windows directory protection.
+            sys_temp = str(get_system_temp_dir().resolve()).lower().rstrip("\\/")
+            if resolved_str == sys_temp or resolved_str.startswith(sys_temp + "\\"):
+                return False
+
             return self.repo.is_protected(resolved_str)
         except Exception:
             return True  # Fail-safe to protected on resolution failure

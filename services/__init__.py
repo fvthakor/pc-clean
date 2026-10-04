@@ -13,6 +13,7 @@ from services.duplicate_service import DuplicateService
 from services.flutter_service import FlutterService
 from services.large_file_service import LargeFileService
 from services.node_service import NodeService
+from services.project_service import ProjectScannerService
 from services.protection_service import ProtectionService
 from services.python_service import PythonService
 from services.quarantine_service import QuarantineService
@@ -33,6 +34,7 @@ __all__ = [
     "StorageScanner",
     "CacheService",
     "NodeService",
+    "ProjectScannerService",
     "PythonService",
     "AndroidService",
     "FlutterService",

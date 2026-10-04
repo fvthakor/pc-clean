@@ -155,6 +155,45 @@ QComboBox::drop-down {
     padding-right: 8px;
 }
 
+/* Radio Buttons and CheckBoxes */
+QRadioButton, QCheckBox {
+    color: #E6EDF3;
+    font-size: 13px;
+    spacing: 10px;
+    background: transparent;
+}
+
+QRadioButton::indicator, QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #364354;
+    border-radius: 9px;
+    background-color: #0E141B;
+}
+
+QCheckBox::indicator {
+    border-radius: 4px;
+}
+
+QRadioButton::indicator:checked {
+    background-color: #4F8CFF;
+    border-color: #4F8CFF;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #4F8CFF;
+    border-color: #4F8CFF;
+}
+
+QRadioButton::indicator:hover, QCheckBox::indicator:hover {
+    border-color: #4F8CFF;
+}
+
+QRadioButton:disabled, QCheckBox:disabled {
+    color: #5B6876;
+}
+
+
 /* ScrollBars */
 QScrollBar:vertical {
     background: #0B0F14;
