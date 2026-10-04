@@ -1,0 +1,50 @@
+name: PR Checklist & Safety Gatekeeper
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main, master]
+
+jobs:
+  validate-checklist:
+    name: Verify PR Checklist
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate PR Template & Safety Checklist
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python scripts/verify_pr_checklist.py
+
+  safety-gatekeeper:
+    name: Safety Policy Integrity Guard
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run Safety Engine & Protection Policy Tests
+        run: |
+          python -m pytest tests/unit/test_safety_engine.py tests/unit/test_protection.py -v

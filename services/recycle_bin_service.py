@@ -20,7 +20,11 @@ class RecycleBinService:
             send2trash.send2trash(str(path.resolve()))
             return True
         except Exception as e:
-            logger.error(f"Error sending {path} to recycle bin: {e}")
+            err_msg = str(e).lower()
+            if "0x80270027" in err_msg or "sharing violation" in err_msg or "used by another process" in err_msg:
+                logger.debug(f"File locked by active process, skipped: {path}")
+            else:
+                logger.warning(f"Could not send {path} to recycle bin: {e}")
             return False
 
     @staticmethod
