@@ -85,3 +85,28 @@ def test_quarantine_movement_and_restore(cleanup_test_env):
     assert restored
     assert target_file.exists()
     assert target_file.read_text(encoding="utf-8") == "dummy package tarball"
+
+
+def test_cleanup_skips_in_use_files_gracefully(cleanup_test_env):
+    clean_svc, _, temp_dir = cleanup_test_env
+    temp_junk = temp_dir / "UserTemp"
+    temp_junk.mkdir()
+    locked_file = temp_junk / "active_app.lock"
+    locked_file.write_text("data" * 100, encoding="utf-8")
+
+    # Keep file open to simulate an active browser or process holding a lock
+    with open(locked_file, "r+b"):
+        candidate = CleanupCandidate(
+            id="c_temp",
+            name="User Temp Files",
+            description="temp",
+            path=temp_junk,
+            category=CleanupCategory.USER_TEMP,
+            size=400,
+            files_count=1,
+            safety_level=SafetyLevel.SAFE,
+            reason="temp",
+        )
+        result = clean_svc.execute_cleanup([candidate], use_recycle_bin=False)
+        assert result.files_skipped >= 1
+        assert locked_file.exists()
