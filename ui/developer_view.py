@@ -309,6 +309,12 @@ class DeveloperView(QWidget):
         self.all_artifacts = artifacts
         self._apply_filter()
 
+    def remove_cleaned_artifacts(self, cleaned: list[ProjectArtifact]) -> None:
+        """Remove cleaned artifacts from the active list and refresh table immediately."""
+        cleaned_paths = {str(a.path).lower() for a in cleaned}
+        self.all_artifacts = [a for a in self.all_artifacts if str(a.path).lower() not in cleaned_paths]
+        self._apply_filter()
+
     def _apply_filter(self) -> None:
         filt = self.combo_tech_filter.currentText()
         if filt.startswith("Node.js"):
