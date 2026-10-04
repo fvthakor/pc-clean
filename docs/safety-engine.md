@@ -35,11 +35,31 @@ PcClean will never delete or allow selection of:
 Any file matching the following extensions is automatically evaluated as **`BLOCKED`**:
 ```python
 PROTECTED_EXTENSIONS = {
-    ".env", ".env.local", ".env.development", ".env.production", ".env.test",
-    ".ssh", ".pem", ".key", ".pfx", ".p12", ".cer", ".crt", ".pub",
-    ".id_rsa", ".id_ed25519", ".id_ecdsa",
-    ".db", ".sqlite", ".sqlite3", ".mdf", ".ldf", ".kdbx",
-    ".gitconfig", ".bashrc", ".zshrc"
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production",
+    ".env.test",
+    ".ssh",
+    ".pem",
+    ".key",
+    ".pfx",
+    ".p12",
+    ".cer",
+    ".crt",
+    ".pub",
+    ".id_rsa",
+    ".id_ed25519",
+    ".id_ecdsa",
+    ".db",
+    ".sqlite",
+    ".sqlite3",
+    ".mdf",
+    ".ldf",
+    ".kdbx",
+    ".gitconfig",
+    ".bashrc",
+    ".zshrc",
 }
 ```
 
@@ -47,9 +67,18 @@ PROTECTED_EXTENSIONS = {
 Files with the following names are blocked regardless of extension:
 ```python
 PROTECTED_FILENAMES = {
-    "id_rsa", "id_rsa.pub", "id_ed25519", "id_ed25519.pub",
-    "known_hosts", "authorized_keys", ".env", ".env.local",
-    "credentials", "config.json", "settings.json", "private.key"
+    "id_rsa",
+    "id_rsa.pub",
+    "id_ed25519",
+    "id_ed25519.pub",
+    "known_hosts",
+    "authorized_keys",
+    ".env",
+    ".env.local",
+    "credentials",
+    "config.json",
+    "settings.json",
+    "private.key",
 }
 ```
 
