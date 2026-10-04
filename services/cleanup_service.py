@@ -184,12 +184,15 @@ class CleanupService:
                     if is_file_locked(child):
                         skipped_files += 1
                         continue
-                    size = child.stat().st_size
+                    try:
+                        size = child.stat().st_size
+                    except Exception:
+                        size = 0
                     if self._delete_or_quarantine(child, size, use_recycle_bin, use_quarantine, category):
                         cleaned_bytes += size
                         deleted_files += 1
                     else:
-                        errors += 1
+                        skipped_files += 1
                 elif child.is_dir():
                     # Recursive clean for subdirectory
                     c_bytes, c_files, c_skip, c_err = self._clean_path(
@@ -207,7 +210,7 @@ class CleanupService:
                     except Exception:
                         pass
             except (PermissionError, FileNotFoundError, OSError):
-                errors += 1
+                skipped_files += 1
 
         return cleaned_bytes, deleted_files, skipped_files, errors
 
@@ -227,5 +230,14 @@ class CleanupService:
                     shutil.rmtree(path, ignore_errors=True)
                 return True
         except Exception as e:
-            logger.error(f"Error deleting {path}: {e}")
+            err_msg = str(e).lower()
+            if (
+                "winerror 32" in err_msg
+                or "being used by another process" in err_msg
+                or "sharing violation" in err_msg
+                or "0x80270027" in err_msg
+            ):
+                logger.debug(f"File currently in use by active process, skipped: {path}")
+            else:
+                logger.warning(f"Could not delete {path}: {e}")
             return False
