@@ -1,0 +1,16 @@
+# Global repository maintainers
+* @fvthakor
+
+# Core Safety Engine and Deletion Mechanics (Strict Review Required)
+/services/safety_engine.py @fvthakor
+/services/cleanup_service.py @fvthakor
+/services/protection_service.py @fvthakor
+/services/quarantine_service.py @fvthakor
+/services/recycle_bin_service.py @fvthakor
+/utils/windows.py @fvthakor
+
+# CI/CD and Release Packaging
+/.github/workflows/ @fvthakor
+/PcClean.spec @fvthakor
+/installer.iss @fvthakor
+/pyproject.toml @fvthakor

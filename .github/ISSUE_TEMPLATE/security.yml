@@ -1,0 +1,13 @@
+name: Security Vulnerability (Notice)
+description: Guidance on responsibly disclosing security vulnerabilities
+title: "[Security]: "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠️ Important Notice: Do Not Open Public Issues for Vulnerabilities!
+
+        If you believe you have discovered a security vulnerability in PcClean, especially any scenario where protected directories, credential files, or user project folders might be deleted or corrupted without explicit user authorization, **do NOT create a public GitHub issue**.
+
+        Please read our **[Security Policy](https://github.com/fvthakor/pc-clean/security/policy)** and follow the private reporting instructions outlined in [SECURITY.md](../SECURITY.md).

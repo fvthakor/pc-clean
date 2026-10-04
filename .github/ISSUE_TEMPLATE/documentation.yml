@@ -1,0 +1,28 @@
+name: Documentation Improvement
+description: Suggest improvements or report inaccuracies in PcClean documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Accurate, crystal-clear documentation is essential for developer safety. Thank you for helping improve it!
+  - type: textarea
+    id: page
+    attributes:
+      label: Which document needs improvement?
+      description: Provide the path, link, or section name (e.g. docs/safety-engine.md, README.md).
+    validations:
+      required: true
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: What is missing, unclear, or outdated?
+      description: Describe what should be changed or added.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_change
+    attributes:
+      label: Proposed Fix / Improvement
+      description: Provide your suggested wording or corrections if you have them.

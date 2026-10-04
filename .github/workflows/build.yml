@@ -1,0 +1,65 @@
+name: Build & Package Windows Executable
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+    branches:
+      - main
+      - master
+  pull_request:
+    paths:
+      - "PcClean.spec"
+      - "main.py"
+      - "app/**"
+      - "ui/**"
+      - "services/**"
+      - "resources/**"
+
+jobs:
+  build:
+    name: Build Standalone Windows Binary
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compile Windows executable via PyInstaller
+        run: |
+          pyinstaller PcClean.spec --clean --noconfirm
+
+      - name: Verify build artifacts
+        shell: powershell
+        run: |
+          if (Test-Path "dist\PcClean\PcClean.exe") {
+              Write-Host "PcClean.exe built successfully."
+              Get-Item "dist\PcClean\PcClean.exe" | Select-Object Name, Length
+          } else {
+              Write-Error "Build verification failed: dist\PcClean\PcClean.exe not found."
+              exit 1
+          }
+
+      - name: Compress Build Output
+        shell: powershell
+        run: |
+          Compress-Archive -Path "dist\PcClean\*" -DestinationPath "dist\PcClean-x64.zip" -Force
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PcClean-Windows-x64
+          path: dist/PcClean-x64.zip
+          retention-days: 14
