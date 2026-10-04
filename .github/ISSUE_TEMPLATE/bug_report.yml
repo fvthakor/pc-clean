@@ -1,0 +1,73 @@
+name: Bug Report
+description: Report an issue or unexpected behavior in PcClean
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! PcClean takes safety very seriously. If you are reporting a security issue or accidental file loss vulnerability, please see our [Security Policy](https://github.com/fvthakor/pc-clean/security/policy).
+  - type: input
+    id: version
+    attributes:
+      label: PcClean Version
+      description: Which version of PcClean did you encounter this bug in?
+      placeholder: "e.g., 1.0.0 or commit hash"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Windows OS Version
+      options:
+        - Windows 11 (23H2 or newer)
+        - Windows 11 (22H2 or older)
+        - Windows 10 (22H2)
+        - Windows Server 2022 / 2025
+        - Other (specify in description)
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Run Mode
+      options:
+        - Standalone Executable (PcClean.exe)
+        - Source (PySide6 GUI)
+        - CLI (python -m winclean)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this behavior?
+      placeholder: |
+        1. Open PcClean
+        2. Navigate to 'Developer' view
+        3. Click 'Scan Developer Tools'
+        4. See error or crash
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Error Traceback
+      description: Paste any terminal output, Python tracebacks, or log excerpts here.
+      render: shell
+  - type: checkboxes
+    id: safety_check
+    attributes:
+      label: Safety & Pre-submission Checklist
+      options:
+        - label: I confirmed that no private credentials, SSH keys, or personal tokens are included in the logs above.
+          required: true
+        - label: I checked existing issues to verify this is not a duplicate report.
+          required: true

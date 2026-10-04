@@ -1,0 +1,41 @@
+name: Feature Request
+description: Suggest a new idea or improvement for PcClean
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome ideas for new developer ecosystem caches, UI enhancements, or storage inspection features!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of the problem or limitation you are facing.
+      placeholder: "I am always running out of space due to..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe your proposed solution
+      description: What would you like PcClean to do?
+      placeholder: "Add support for detecting and managing..."
+    validations:
+      required: true
+  - type: textarea
+    id: safety_implications
+    attributes:
+      label: Safety & Developer Impact Analysis
+      description: |
+        PcClean strictly adheres to 'Show First, Explain Second, Clean Last'.
+        - Can the target files be safely re-downloaded or re-generated?
+        - Could this touch user source code, build credentials, or active databases?
+        - What safety level should this category have? (SAFE, SAFE_REDOWNLOAD, REVIEW, IMPORTANT)
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or features you've considered.
