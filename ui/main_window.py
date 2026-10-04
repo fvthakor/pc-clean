@@ -98,6 +98,7 @@ class MainWindow(QMainWindow):
         self.config = AppConfig.load()
         self.thread_pool = QThreadPool.globalInstance()
         self.current_worker: GenericWorker | None = None
+        self._active_workers: set[GenericWorker] = set()
 
         self.protection_service = ProtectionService()
         self.safety_engine = SafetyEngine(self.protection_service)
@@ -258,6 +259,20 @@ class MainWindow(QMainWindow):
             self.view_developer.txt_project_dir.setText(f"{letter}\\")
             self.cmd_panel.log(f"Active drive switched to {letter} ({drv.name})")
 
+    def _start_worker(self, worker: GenericWorker) -> None:
+        """Start worker in threadpool while retaining reference to prevent Python GC."""
+        self.current_worker = worker
+        self._active_workers.add(worker)
+
+        def _cleanup(*_):
+            self._active_workers.discard(worker)
+            if self.current_worker is worker:
+                self.current_worker = None
+
+        worker.signals.finished.connect(_cleanup)
+        worker.signals.error.connect(_cleanup)
+        self.thread_pool.start(worker)
+
     # --- Scanning Pipelines ---
     def start_fast_scan(self, drive_letter: str) -> None:
         self.cmd_panel.set_busy(True, f"Scanning caches & storage on {drive_letter}...")
@@ -303,11 +318,10 @@ class MainWindow(QMainWindow):
             return summary, tree_root
 
         worker = GenericWorker(_task)
-        self.current_worker = worker
         worker.signals.log.connect(self.cmd_panel.log)
         worker.signals.finished.connect(self._on_fast_scan_finished)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_fast_scan_finished(self, result) -> None:
         summary, tree_root = result
@@ -337,7 +351,8 @@ class MainWindow(QMainWindow):
 
         worker = GenericWorker(_task)
         worker.signals.finished.connect(self._on_dev_scan_finished)
-        self.thread_pool.start(worker)
+        worker.signals.error.connect(self._on_worker_error)
+        self._start_worker(worker)
 
     def _on_dev_scan_finished(self, tools: list[DeveloperTool]) -> None:
         self.latest_dev_tools = tools
@@ -362,7 +377,7 @@ class MainWindow(QMainWindow):
         worker.signals.log.connect(self.cmd_panel.log)
         worker.signals.finished.connect(self._on_projects_scan_finished)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_projects_scan_finished(self, artifacts) -> None:
         self.cmd_panel.set_busy(False, f"Project scan completed ({len(artifacts)} artifacts)")
@@ -371,38 +386,57 @@ class MainWindow(QMainWindow):
         self.view_developer.populate_project_artifacts(artifacts)
 
     def clean_workspace_artifacts(self, artifacts) -> None:
-        self.cmd_panel.set_busy(True, f"Cleaning {len(artifacts)} project artifacts...")
-        self.cmd_panel.log(f"Sending {len(artifacts)} project artifacts to Windows Recycle Bin...")
+        if not artifacts:
+            return
+        total = len(artifacts)
+        self.cmd_panel.set_busy(True, f"Cleaning {total} project artifacts...")
+        self.cmd_panel.log(f"Initiating cleanup for {total} project artifacts to Windows Recycle Bin...")
 
         def _task(is_cancelled, progress_signal):
             from services.project_service import ProjectScannerService
 
             cleaned_count = 0
             cleaned_bytes = 0
-            for art in artifacts:
+            cleaned_arts = []
+            for i, art in enumerate(artifacts, 1):
                 if is_cancelled and is_cancelled():
+                    progress_signal.log.emit("⚠️ Project cleanup cancelled by user.")
                     break
+                pct = int((i / total) * 100)
+                progress_signal.progress.emit(f"Cleaning ({i}/{total}): {art.project_name}/{art.artifact_name}", pct)
                 progress_signal.log.emit(
-                    f"Cleaning {art.project_name}/{art.artifact_name} ({format_bytes(art.size)})..."
+                    f"[{i}/{total}] Cleaning {art.project_name}/{art.artifact_name} ({format_bytes(art.size)})..."
                 )
                 if ProjectScannerService.clean_artifact(art, use_recycle_bin=True):
                     cleaned_count += 1
                     cleaned_bytes += art.size
-            return cleaned_count, cleaned_bytes
+                    cleaned_arts.append(art)
+            return cleaned_count, cleaned_bytes, cleaned_arts
 
         def _on_done(res):
-            cnt, sz = res
-            self.cmd_panel.set_busy(False, "Project cleanup complete")
-            self.cmd_panel.log(f"Successfully cleaned {cnt} artifacts ({format_bytes(sz)} reclaimed) to Recycle Bin.")
-            curr_dir = self.view_developer.txt_project_dir.text().strip()
-            if curr_dir:
-                self.scan_workspace_projects(curr_dir)
+            cnt, sz, cleaned_arts = res
+            self.cmd_panel.set_busy(False, f"Project cleanup complete ({cnt}/{total})")
+            self.cmd_panel.set_progress(100, f"Completed: {cnt}/{total}")
+            self.cmd_panel.log(
+                f"🎉 Successfully cleaned {cnt} artifacts ({format_bytes(sz)} reclaimed) to Recycle Bin."
+            )
+            self.view_developer.remove_cleaned_artifacts(cleaned_arts)
+            self.refresh_drives()
+            QMessageBox.information(
+                self,
+                "Project Cleanup Complete",
+                f"Successfully cleaned {cnt} of {total} project artifact(s)!\n\n"
+                f"Reclaimed Disk Space: {format_bytes(sz)}\n"
+                f"Destination: Windows Recycle Bin\n\n"
+                "Artifacts can be restored from the Recycle Bin if needed, or reinstalled with your build tools.",
+            )
 
         worker = GenericWorker(_task)
         worker.signals.log.connect(self.cmd_panel.log)
+        worker.signals.progress.connect(self.cmd_panel.on_progress)
         worker.signals.finished.connect(_on_done)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def scan_applications(self) -> None:
         def _task(is_cancelled, progress_signal):
@@ -412,7 +446,8 @@ class MainWindow(QMainWindow):
 
         worker = GenericWorker(_task)
         worker.signals.finished.connect(self._on_apps_scan_finished)
-        self.thread_pool.start(worker)
+        worker.signals.error.connect(self._on_worker_error)
+        self._start_worker(worker)
 
     def _on_apps_scan_finished(self, res) -> None:
         apps, leftovers = res
@@ -440,11 +475,10 @@ class MainWindow(QMainWindow):
             )
 
         worker = GenericWorker(_task)
-        self.current_worker = worker
         worker.signals.log.connect(self.cmd_panel.log)
         worker.signals.finished.connect(self._on_large_files_finished)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_large_files_finished(self, files: list[FileItem]) -> None:
         self.view_large_files.populate_files(files)
@@ -467,11 +501,10 @@ class MainWindow(QMainWindow):
             )
 
         worker = GenericWorker(_task)
-        self.current_worker = worker
         worker.signals.log.connect(self.cmd_panel.log)
         worker.signals.finished.connect(self._on_duplicates_finished)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_duplicates_finished(self, groups) -> None:
         self.view_duplicates.populate_duplicates(groups)
@@ -543,11 +576,10 @@ class MainWindow(QMainWindow):
             )
 
         worker = GenericWorker(_task)
-        self.current_worker = worker
         worker.signals.log.connect(self.cmd_panel.log)
         worker.signals.finished.connect(self._on_cleanup_finished)
         worker.signals.error.connect(self._on_worker_error)
-        self.thread_pool.start(worker)
+        self._start_worker(worker)
 
     def _on_cleanup_finished(self, result) -> None:
         self.cmd_panel.set_busy(False, "Cleanup finished")

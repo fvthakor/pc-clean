@@ -88,9 +88,14 @@ class CommandOutputPanel(QFrame):
         self.txt_log.verticalScrollBar().setValue(self.txt_log.verticalScrollBar().maximum())
 
     def set_progress(self, percent: int, status_text: str = "") -> None:
+        self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(percent)
         if status_text:
             self.lbl_status.setText(status_text)
+
+    def on_progress(self, status_msg: str, percent: int) -> None:
+        """Slot for WorkerSignals.progress (status_msg, percent)."""
+        self.set_progress(percent, status_msg)
 
     def set_busy(self, is_busy: bool, status_text: str = "") -> None:
         self.btn_cancel.setEnabled(is_busy)
